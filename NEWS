@@ -1,0 +1,12 @@
+Version 2.7
+============
+Added "processalso" config variable: Here you can write a list of non-HTML
+files, which will be parsed.
+
+Added "webdevelop" config variable: If set to Y, the output will also contain
+the "Keywords" and the length of "TITLE" and "Description"
+
+Added "ignoredirs" config variable: If set to Y, there will not be any directory
+entries in the output.
+
+ vim:set tw=80:

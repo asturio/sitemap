@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC 
+    "-//OASIS//DTD DocBook XML V4.1.2//EN" 
+    "docbook/docbookxx.dtd" [
+<!ENTITY % ISOnum PUBLIC
+    "ISO 8879:1986//ENTITIES Numeric and Special Graphic//EN"
+    "iso-num.ent">
+%ISOnum;
+<!ENTITY % ISOpub PUBLIC
+    "ISO 8879:1986//ENTITIES Publishing//EN"
+    "iso-pub.ent">
+%ISOpub;
+]>
+
+<refentry id='sitemap.man'>
+
+<refmeta>
+<refentrytitle>sitemap</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+<refnamediv id='name'>
+<refname> sitemap</refname>
+<refpurpose>make a site map from meta tags in an HTML tree</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv id='synopsis'>
+<cmdsynopsis>
+  <command>sitemap</command>  
+  <group choice='opt'>
+     <arg choice='plain'><replaceable>start-dir</replaceable></arg>
+     <arg choice='plain'><replaceable>config-file</replaceable></arg>
+  </group>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>Description</title> 
+<para><command>sitemap</command> indexes all pages under the start
+directory and writes an HTML map page to standard output.  The code
+looks for description information for each page in a META DESCRIPTION
+header; if it doesn't find one, the page is omitted from the index.
+That is, HTML pages to be indexed should have a <markup>meta</markup>
+tag with its <markup>name</markup> attribute set to
+<markup>description</markup> and its <markup>content</markup>
+attribute set to a brief description ofthe contents.  For example,
+</para>
+
+<literallayout remap='Vb'>
+ &lt;head&gt;
+   &lt;title&gt;Sitemap documentation&lt;/title&gt;
+   &lt;meta name="description" 
+     content="Documentation for <command>sitemap</command> program to index HTML pages."&gt;
+ &lt;/head&gt;
+</literallayout>
+
+<para>The output of <command>sitemap</command> is an HTML page that
+contains a list of descriptions and links to the indexed pages.  This
+output can be configured via an rc file (see below).</para>
+</refsect1>
+
+<refsect1><title>Arguments</title>
+<para>If no options are supplied, the start directory is the directory
+indicated by the DOCUMENT_ROOT or HOME environment variables, in that
+order.  If neither variable is specified on a UNIX system, the
+effective user's home directory (as indicated in the passwd file) will
+be used.  If a <filename>start-dir</filename> directory is supplied as
+an argument, then that directory will be used as the start directory.
+In both of these cases, the configuration will be read from a file
+named .sitemaprc in the start directory.  If the configuration file
+does not exist, <command>sitemap</command> will run with a set of
+default parameters, which is usually not what you want.</para>
+
+<para>If a <filename>config-file</filename> configuration file is
+specified, then the configuration for <command>sitemap</command> will
+be read from that file.  In this case, the start directory will be the
+directory containing the configuration file.</para>
+</refsect1>
+
+<refsect1><title>Configuration File</title>
+<para><command>sitemap</command> is a Python script.  To configure the
+strings used in the index page header and footer, you can create a
+configuration file in your home directory called .sitemaprc (or as
+indicated by the command-line parameter).  A skeleton of a
+configuration file is provided with the program.  The file should
+start with the text <markup>[sitemap]</markup> on a line
+by itself.  Subsequent lines should be name=value pairs.  Lines
+beginning with the # character are treated as comments and are
+ignored. The possible field names in the configuration file are listed
+below:</para>
+
+<variablelist>
+
+<varlistentry><term>Hometitle=<replaceable>title</replaceable></term>
+<listitem><para>The title of your homepage.  The generated site map
+will contain a link with this text.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Homepage=<replaceable>url</replaceable></term>
+<listitem><para>The URL of your homepage.  The generated site map will
+contain a link back to this page.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Indextitle=<replaceable>title</replaceable></term>
+<listitem><para>The title for the generated site map
+page.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Headinfo=<replaceable>any Html Text</replaceable></term> 
+<listitem><para>Any additional HTML you want to include in the
+&lt;head&gt; section of the site map.  Use with care - only certain
+tags are legal in the &lt;head&gt; of a page.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Body=<replaceable>attributes</replaceable></term>
+<listitem><para>Any additional attributes to be included in the
+&lt;body&gt; tag.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Prefix=<replaceable>url</replaceable></term>
+<listitem><para>An optional URL prefix to put before each
+pathname. Normally, <command>sitemap</command> outputs each filename
+as a site-relative path beginning with a '/', in the assumption that
+the start-directory can be accessed with the URL '/'.  (That is, the
+start directory would be the directory indciated by the web server's
+DOCUMENT_ROOT.)  If this is incorrect (e.g. you are indexing a user's
+home page whose URL begins with '/~username') you can supply the
+alternative URL prefix here.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Dirtitle=<replaceable>title</replaceable></term>
+<listitem><para>The title string to use for directories.  Directories
+are listed and linked in the generated site map page with this
+text.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Fullname=<replaceable>name</replaceable></term>
+<listitem><para>Your full name.  This name will be included in one
+corner of the generated site map page.  You may want to list a company
+name or a copyright statement instead, for example. </para></listitem>
+</varlistentry>
+
+<varlistentry><term>Mailaddr=<replaceable>address</replaceable></term>
+<listitem><para>E-mail address of a contact person.  Since the e-mail
+address will be linked on the generated site map page, you may want to
+set this parameter to the e-mail address of a contact person or a
+webmaster.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Language=<replaceable>language</replaceable></term>
+<listitem><para>The language for the boilerplate text included in the
+output (Czech, English, French, German, Italian, Norwegian, Spanish,
+or Swedish). </para></listitem>
+</varlistentry>
+
+<varlistentry><term>Icondirs=<replaceable>icon Path</replaceable></term>
+<listitem><para>The path (relative to the start directory or a URL) of
+the icon for directories.  The icon must be 33 pixels wide (or
+scaleable to that size).  If omitted, no icon will be displayed next
+to site map entries for directories.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Icontext=<replaceable>icon Path</replaceable></term>
+<listitem><para>The path (relative to the start directory or a URL) of
+the icon for HTML files.  The icon must be 33 pixels wide (or
+scaleable to that size).  If omitted, no icon will be displayed next
+to site map entries for HTML pages.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Indexfiles=<replaceable>file1 File2 File3</replaceable></term>
+<listitem><para>A space-separated list of files to treat as index or
+main pages for a directory.  Any file with a filename exactly equal to
+one of the indicated filenames will be treated as an index page.
+Index pages sort to the top of the list of files in a directory.  For
+example, index.html or default.htm might be good candidates for this
+parameter.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Exclude=<replaceable>word1 Word2</replaceable></term>
+<listitem><para>A space-separated list of words to ignore when
+scanning files and directories.  <command>sitemap</command> will skip
+any file or entire subdirectories the contain any of the words in
+their path.  For example, Test or CVS may be good candidates for this
+parameter.</para></listitem>
+</varlistentry>
+
+<varlistentry><term>processalso=<replaceable>file1 file2 file3</replaceable></term>
+<listitem><para>
+A space-separated list of filenames, which will also be parsed by
+<command>sitemap</command>. Here you can put your PHP, or Perl Pages, which
+contains also a HTML header.
+</para></listitem>
+</varlistentry>
+
+<varlistentry><term>webdevelop=<replaceable>y</replaceable></term>
+<listitem><para>
+If set to y, the output will also display the "Keywords" and also the lenght of
+"Description" and "title". This is ideal while making some search engine
+optimisation.  </para></listitem>
+</varlistentry>
+
+<varlistentry><term>ignoredirs=<replaceable>y</replaceable></term>
+<listitem><para>
+If set to y, there won't be any Directory Entry in the output. This is perfect,
+if you actually have in each directory an index-file, or if you don't want to
+have users browsing all directories in yout site tree.
+</para></listitem>
+</varlistentry>
+
+<varlistentry><term>Debug=<replaceable>y</replaceable></term>
+<listitem><para>Set this parameter to view the computed configuration
+file name, start directory, document root, and prefix in the generated
+site map page.  You'll need to view the source of the generated HTML
+file because these values will be listed within and HTML comment.
+Search for the word <emphasis>Debugging</emphasis> in the generated
+HTML page.</para></listitem>
+</varlistentry>
+</variablelist>
+
+</refsect1>
+
+<refsect1><title>Use Under CGI</title>
+
+<para>You can use <command>sitemap</command> to generate site maps on
+the fly. Any command-line argument can be passed as the query string
+(i.e. a string immediately following the URL of the CGI script and a
+'?' character).</para>
+
+<para><command>sitemap</command> will deduce that it is running under
+the CGI by virtue of the fact that the REMOTE_ADDR environment
+variable is defined. If so, it outputs a content-type header
+(text/html) ahead of the HTML page.</para>
+
+<para>When running as a CGI script, <command>sitemap</command> does
+not assume that the document root is necessarily identical with the
+start directory.  It inspects the DOCUMENT_ROOT environment variable
+and constructs a prefix in an attempt to get from the server document
+root to the start directory. This will fail if the start directory is
+not a subdirectory under the document root, in which case the prefix
+directive in the configuration file should be used.</para>
+</refsect1>
+
+<refsect1><title>Authors</title>
+
+<para>Eric S. Raymond <email>esr@thyrsus.com</email>.</para>
+
+<para>Immo Huneke <email>HunekeI@Logica.Com</email>.</para>
+
+<para>Tom Bryan <email>tbryan@python.net</email>.</para>
+</refsect1>
+</refentry>
+

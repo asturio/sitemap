@@ -1,0 +1,35 @@
+2008-04-17  Claudio André Till Clemens  <asturio@gmx.net>
+
+	* sitemap: (BUGFIX) Changed source to UTF-8, with python coding header
+	* sitemap: Renamed sitemap.py in source to sitemap (as the script is not
+	called sitemap.py)
+	* sitemap: Added version variable and added it to output
+	* sitemap: Added new config-vars: processalso, webdevelop, ignoredirs
+	* sitemap: (BUGFIX) Use right variable for saving Day of month in
+	time.gmtime()
+	* sitemap: Some HTML cleanup.
+	* sitemap: (BUGFIX) If there is an empty mailaddr, there won't be any
+	mailto: link in the output.
+	* sitemap: No width in img-Tag anymore (user should use the size he
+	wants.)
+	* sitemap.xml: Added description of new configuration variables:
+	processalso, webdevelop, ignoredirs
+	* sitemap.1: Update like sitemap.xml manually, since all ent files are
+	missing.
+	* ChangeLog: Added ChangeLog file.
+	* NEWS: Added NEWS file.
+	* sitemap.spec: version updated
+	* Makefile: Added ChangeLog and NEWS to SOURCES
+	* sitemaprc: Update template configuration file to reflect new options
+
+2008-08-21  Claudio André Till Clemens <asturio@gmx.net>
+
+	* sitemap: Removed bgcolor, it is old HTML
+	* sitemap: Added empty encoding configuration-var. If it is missing
+	there is a parse error.
+	* sitemap: Changed from HTML 4.01 to XHTML 1.0, corrected HTML, so
+	output is valid. Many attributes where removed. Use class for <hr>
+	* sitemap: corrected output of mailaddr link if there is a mailaddr.
+
+# vim:set tw=80:
+

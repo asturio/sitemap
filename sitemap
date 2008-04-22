@@ -1,0 +1,592 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+sitemap -- sythesize a site map from meta-description data
+
+This code uses Python's ConfigParser module to read the configuration
+file, so the configuration file must correspond to the format
+documented in that module.  See also the accompanying documentation.
+
+The only "data structure" used in the code is the lightweight class PageInfo.
+The program reads its configuration information, builds a list of
+PageInfo instances, and then prints a site map HTML page to stdout.
+Each PageInfo instance looks like a dictionary with the keys, 
+'file', 'title', and 'desc'. PageInfo provides a custom comparison
+operation that sorts PageInfo instances based on the file or directory
+that they represent.  PageInfo also provides an isdir method to
+determine whether a given instance provides information about a file
+or a directory.
+
+By Eric S. Raymond, Copyright 1997.  Use and redistribute freely. 
+"""
+import os
+import re	# of course, we're translating from Perl ;)
+import string	# to avoid unnecessary regexen
+from UserDict import UserDict
+
+############################################################
+# Default "constants"
+############################################################
+
+# Author of sitemap
+sitemap_author = 'Eric S. Raymond ' \
+                  '&lt;<a href="mailto:esr@thyrsus.com">esr@thyrsus.com</a>&gt;'
+
+version = "2.7"
+
+# default configuration; this can be overridden with a config file
+configuration = {'hometitle': "Eric's Home Page",
+                 'homepage': "http://www.catb.org/~esr/",
+                 'indextitle': "Map of Eric's Home Web", 
+                 'headinfo': "",
+                 'body': "",
+                 'dirtitle': "Directory",
+                 'fullname': "Eric S. Raymond",
+                 'mailaddr': "esr@thyrsus.com",
+                 'language': "english",
+                 'icondirs': "",
+                 'icontext': "",
+                 'encoding': "",
+                 'indexfiles': ("index.html", "index.shtml", "index.htm", "default.htm", "index.phtml", "INDEX.HTM"),
+                 'exclude': ("Test","test","oldstuff","CVS","RCS","SCCS", "SVN", ".svn"),
+                 'processalso': "",
+                 'webdevelop': "",
+                 'ignoredirs': "n",
+                 'debug': ''}
+
+# Used by get_lang_msg.
+lang_months = {
+    'czech': (
+    	'ledna','února','bøezna','dubna','kvìtna','èervna','èervence','srpna','záøí','øíjna','listopadu','prosince'),
+    'english': (
+        'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'),
+    'french': (
+        'janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'),
+    'german': (
+        'Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'),
+    'italian': (
+    	'Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'),    
+    'norwegian': (
+        'Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Des'),
+    'portuguese': (
+	'Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'),
+    'swedish': ( # I'll have to ask Skot what these should be.
+        'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'),
+    }
+    
+
+
+############################################################
+# Function declarations
+############################################################
+
+def parse_config_file(filename):
+    """parse_config_file(filename) takes a string, the config file's path
+    It returns a dictionary representing the key->value pairs of configuration
+    options specified in the file.  The configuration file is assumed to be
+    formatted according to RFC 822, with a section labeled [sitemap]."""
+    import ConfigParser
+    import string
+    return_config = {}
+    try:
+        cf = ConfigParser.ConfigParser()
+        cf.read( filename )
+        if not cf.has_section('sitemap'):
+            raise ConfigParser.Error('Config file %s has no [sitemap] section.  See RFC 822.' % filename)
+        else:
+            for option in cf.options('sitemap'):
+                if option in ('exclude', 'indexfiles', 'processalso'):
+                    return_config[option] = string.split(cf.get('sitemap', option, raw=1))
+                else:    
+                    return_config[option] = cf.get('sitemap', option, raw=1)
+    except ConfigParser.Error, data:
+        sys.stderr.write('Error parsing configuration file: %s\n' % data)
+        sys.stderr.write('Continuing with default configuration.\n')
+        return_config = {}
+    return return_config
+
+
+def get_lang_msg(lang):
+    """get_lang_msg(lang) takes a string indicating one of several languages.
+    It returns a dictionary of phrases for the sitemap page in the requested language.
+    """
+    # get the current UTC time as a Python time tuple
+    import time
+    (year, month, mday, hour, minute, second, wday, yday, tz) = time.gmtime(time.time())
+    # To get month abbreviations, we use a dictionary: lang->list of months.
+    # We force the dictionary to be referenced from the global namespace
+    # just to be sure. Then we create a months list by fetching from the
+    # dictionary with a default of 'english'.  We could have also used an
+    # if,elif,elif,else...
+    global lang_months
+    months = lang_months.get(lang,lang_months['english'])
+    # Get the rest of the strings for the requested language, defaulting
+    # to English. Note that we don't need backslashes for the line
+    # continuations since the line is implicitly continued because
+    # we're inside a dictionary.
+    if (string.lower(lang) == 'german'):
+        return {'sitemap': 'Site Map',
+                'back_to': 'Zur&uuml;ck zu',
+                'autogen': 'Dieser Index wurde automatisch generiert aus Meta Tags '
+                  'aller Seiten. Top-Level-Seiten werden zuerst gelistet.',
+                'toolgen': 'Diese Seite wurde generiert von "sitemap %s", ' 
+                  'geschrieben von %s.' % (version, sitemap_author),
+                'date'   : '%d %s %04d %02d:%02d' % (
+                    mday, months[month-1], year,hour,minute)}
+    elif (string.lower(lang) == 'french'):
+        return {'sitemap': 'Carte du site',
+                'back_to': 'Retour à',
+                'autogen': 'Cet index a été généré automatiquement à partir de '
+                  'balises META présentes dans chaque page. Les pages '
+                  'de plus haut niveau sont disponibles au début de cette '
+                  'carte du site.',
+                'toolgen': 'Cette page a été générée par "sitemap %s" '
+                  'écrit par %s.' % (version, sitemap_author),
+                'date'   : '%04d-%02d-%02d %02dh%02d' % (
+                    year, month, mday, hour, minute)}
+    elif (string.lower(lang) == 'portuguese'):
+        return {'sitemap': 'Mapa do site',
+                'back_to': 'Voltar',
+                'autogen': 'Esta página foi automaticamente gerada a partir '
+                  'das META tags contidas em cada uma das páginas. '
+                  'As páginas de topo foram geradas em primeiro lugar.',
+                'toolgen': 'Generado por "sitemap %s" '
+                  'escrito por %s.' % (version, sitemap_author),
+                'date'   : '%02d-%02d-%04d %02d:%02d' % (
+                    mday, month, year, hour, minute)}
+    elif (string.lower(lang) == 'spanish'):
+        return {'sitemap': 'Mapa del sitio',
+                'back_to': 'Volver a',
+                'autogen': 'Este índice ha sido generado automáticamente a partir de '
+                  'los META tags contenidos en cada una de las páginas. Las páginas '
+                  'en un nivel más alto están situadas al principio de '
+                  'este mapa.',
+                'toolgen': 'Esta página ha sido generada por "sitemap %s" '
+                  'escrito por %s.' % (version, sitemap_author),
+                # or is it
+                #'data' : '%2dh%02d, le %d %s %4d' % (hour, min, mday, month, year)
+                'date'   : '%02d-%02d-%04d %02d:%02d' % (
+                    mday, month, year, hour, minute)}
+    elif (string.lower(lang) == 'swedish'):
+        return {'sitemap': 'Sajtkarta',
+                'back_to': 'Tillbaka till',
+                'autogen': 'Denna indexsida är automatiskt genererad från '
+                  'meta-taggar på varje sida. Toppnivåsidor är listade först.',
+                'toolgen': 'Den här sidan är genererad av "sitemap %s", '
+                  'skapad av %s.' % (version, sitemap_author),
+                'date'   : '%04d-%02d-%02d %02d:%02d' % (
+                    year,month,mday,hour,minute)}
+    elif (string.lower(lang) == 'norwegian'):
+        return {'sitemap': 'Nettkart' ,
+                'back_to': 'Tilbake til' ,
+                'autogen': 'Dette er en indeks generert automatisk ut fra '
+                  'meta-tagger på hver side. Toppnivå-sider er listet først.',
+                'toolgen': 'Denne siden er generert av "sitemap %s", '
+                  'skrevet av %s.' % (version, sitemap_author),
+                'date'   : '%04d-%02d-%02d %02d:%02d' % ( 
+                    year,month,mday,hour,minute)}
+    elif (string.lower(lang) == 'italian'):
+        return {'sitemap': 'Site Map',
+                'back_to': 'Ritorna a',
+                'autogen': 'Questo è un indice generato automaticamente in base ai '
+                  'meta tags presenti in ogni pagina. Le pagine del livello '
+                  'superiore sono elencate per prime.', 
+                'toolgen': 'Questa pagina è generata automaticamente da "sitemap %s", '
+                  'scritto da %s.' % (version, sitemap_author),
+                'date'   : '%d-%d-%04d, alle %d:%02d' % (
+                  mday, month, year, hour, minute)}
+    elif (string.lower(lang) == 'finnish'):
+        return { 'sitemap': 'Site Map',
+                 'back_to': 'Takaisin',
+                 'autogen': 'Tämä on automaattisesti luotu sisällysluettelo, '
+                   'joka perustuu sivujen meta-tageihin. Päätason '
+                   'sivut on listattu ensin.',
+                 'toolgen': 'Tämän sivun loi "sitemap %s", \jonka on kirjoittanut '
+                   '%s.' % (version, sitemap_author),
+                 'date': '%02d.%02d.%04d %02d:%02d' % (
+                   mday, month, year, hour, minute)}
+    elif (string.lower(lang) == 'czech'):
+	return { 'sitemap' : 'Site Map',
+                 'back_to' : 'Zpìt',
+                 'autogen' : 'Toto je pøehled, který byl automaticky '
+                 'vygenerován z meta-tagù obsa¾ených v ka¾dé stránce. '
+                 'Stránky vy¹¹í úrovnì jsou vypsány døíve.',
+                 'toolgen' : 'Tato stránka byla vytvoøena programem '
+                 '\"sitemap %s\", který vytvoøil %s.' % (version, sitemap_author),
+                 'date': '%02d.%02d.%04d %02d:%02d' % (
+                   mday, month, year, hour, minute)}
+    else: # default to english if language is unknown
+        return {'sitemap': 'Site Map',
+                'back_to': 'Back to', 
+                'autogen': 'This is an index automatically generated from meta tags '
+                  'present in each of the pages.  Top-level pages are listed first.',
+                'toolgen': 'This page was generated by "sitemap %s", written by %s.' \
+                  % (version, sitemap_author),
+                'date'   : '%d %s %04d, at %d:%02d' % (
+                    mday, month, year, hour, minute)}
+
+
+def extract_file_desc(xtra,dir,files):
+    """This function is used by os.path.walk to extract description information
+    from html files.  It appends PageInfo instances to xtra[1].  
+    xtra[0] is the configuration dictionary used by sitemap.  This function
+    uses the list xtra[0]['exclude'] of files/directories to be excluded,
+    and the special title xtra[0]['dirtitile'] for directories in sitemap."""
+    # Compile the regexen just once.
+    # regex to get the description from a META tag
+    desc_re = re.compile(
+        r'<META\s*NAME\s*=\s*"?DESCRIPTION"?\s*CONTENT\s*=\s*"([^"]*)"',
+        re.IGNORECASE)
+    # Here the Keywords
+    keywords_re = re.compile(
+        r'<META\s*NAME\s*=\s*"?KEYWORDS"?\s*CONTENT\s*=\s*"([^"]*)"',
+        re.IGNORECASE)
+    # regex to get the title from the TITLE tags.
+    title_re = re.compile(r'<TITLE>([^<]*)</TITLE>',re.IGNORECASE)
+    for file in files:
+        title = None
+        process_flag = 0
+        fullpath = os.path.join(dir,file)
+        # Only process files that end in .htm, .html, or .shtml and 
+        # that don't have any of the strings from the exclude list, 
+        # xtra[0]['exclude'], in their absolute path.  Also process directories
+        # that don't include the exclude patterns in their parts.
+        if ( string.lower(fullpath[-5:]) in ('.html','shtml')
+             or string.lower(fullpath[-4:]) == '.htm'
+             or os.path.isdir(fullpath) ):
+            process_flag = 1
+        # Don't process symlinks
+        if os.path.islink(fullpath):
+            process_flag = 0
+        for entry in xtra[0]['exclude']:
+            # This isn't quite right: 'test' will exclude detest.html, for ex.
+            if string.find(fullpath,entry) > -1:
+                process_flag = 0
+        # Added by Claudio Clemens
+        for entry in xtra[0]['processalso']:
+            if string.lower(file) == entry:
+                process_flag = 1
+        # For files that we want to process, get the filename, title, and 
+        #  description for use on the sitemap page.  For directories,
+        #  we create a special entry that is used primarily for grouping
+        #  entries on the sitemap page.
+        if process_flag:
+            if os.path.isdir(fullpath):
+                xtra[1].append( PageInfo(fullpath, xtra[0]['dirtitle'], '', '',1) )
+            else: 
+                inFile = open(fullpath,'r')
+                input = inFile.read()
+                inFile.close()
+                # replace all newlines with spaces in case tags span multiple lines
+                string.replace(input,'\012',' ') # only works on UNIX?
+                # Find the title and description
+                desc_mo = desc_re.search(input)
+                title_mo = title_re.search(input)
+                # ... and keywords
+                keywords_mo = keywords_re.search(input)
+                # Just in case someone forgot a title
+                if title_mo != None:
+                    title = title_mo.group(1)
+                else:
+                    title = "No title"
+                if keywords_mo != None:
+                    keywords = keywords_mo.group(1)
+                else:
+                    keywords = "No keywords"
+                # Don't index files without a 'description' META tag
+                if desc_mo != None:
+                    # Append a PageInfo instance with the  path 
+                    # (without the initial './'), the title, and the description
+                    xtra[1].append( PageInfo(fullpath,title,desc_mo.group(1), keywords) )
+
+
+def generate_header(configuration, message):
+    """generate_header(configuration, message):
+    prints the header and first part of the body of the sitemap page.
+    Both arguments are dictionaries.  The keys that will be used are:
+    configuration:
+     indextitle = Title of the sitemap page
+     sitemap = "Site Map" (possibly not in English)
+     mailaddr = siteowner's e-mail address
+     homepage = home page for this site
+     hometitle = Title for the homepage
+     body = attributes for the <body> tag
+    message:
+     back_to = "Back to" (possibly not in English)
+     date = Date formatted according to some nationality's standard
+     autogen = a message (possibly not in English) explaining how the sitemap was generated
+    """
+    # assign to locals for convenient interpolation into the return string
+    indextitle = configuration['indextitle']
+    mailaddr = configuration['mailaddr']
+    homepage = configuration['homepage']
+    hometitle = configuration['hometitle']
+    body = configuration['body']
+    headinfo = configuration['headinfo']
+    sitemap = message['sitemap']
+    back_to = message['back_to']
+    date = message['date']
+    autogen = message['autogen']
+    processalso = configuration['processalso']
+    if (configuration['encoding'] != ''):
+        encoding = configuration['encoding']
+    else:
+        if (string.lower(configuration['language']) == 'czech'):
+            encoding = "iso-8859-2"
+        else:
+            encoding = "iso-8859-1"
+    # setup dictionary
+    # get a dictionary: localvar -> value
+    local_strings = vars()
+    return """<?xml version="1.0" encoding="%(encoding)s"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+      <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="de">
+      <head>
+        <title>%(indextitle)s</title>
+        <meta name="KEYWORDS" content="%(sitemap)s" /> 
+        <meta http-equiv="Content-type" content="text/html; charset=%(encoding)s" /> 
+        <link rev="MADE" href="mailto:%(mailaddr)s" />
+        %(headinfo)s
+      </head>
+      <body %(body)s>
+      <table summary="Head" width="100%%" cellpadding="0"><tr>
+        <td>%(back_to)s <a target="_top" href="%(homepage)s">%(hometitle)s</a></td>
+        <td align="right">%(date)s</td>
+        </tr></table>
+      <hr />
+      <h1>%(sitemap)s</h1>
+    
+      <p>%(autogen)s</p>
+    
+      <dl>\n""" % local_strings
+
+
+def generate_debug(home_dir, config_file, doc_root, prefix):
+    """generate_debug(home_dir, config_file, doc_root, prefix):
+    prints information about the directory configuration for this run
+    of sitemap in an HTML comment inside the sitemap page.  This
+    function is most useful when first configuring sitemap to generate
+    sitemaps on the fly via CGI."""
+    return """<!--p>Debugging info:</p>
+    <dl>
+    <dt>home_dir
+    <dd>%s
+    <dt>config_file
+    <dd>%s
+    <dt>doc_root
+    <dd>%s
+    <dt>prefix
+    <dd>%s
+    </dl-->
+    """ % (home_dir, config_file, doc_root, prefix)
+
+
+def generate_footer(configuration, message):
+    """generate_footer(configuration, message):
+    prints the last part of the body of the sitemap page
+    Both arguments are dictionaries.  The keys that will be used are:
+    configuration:
+     homepage = home page for this site
+     hometitle = Title for the homepage
+     fullname = siteowner's full name
+     mailaddr = siteowner's e-mail address
+    message:
+     toolgen = a message (possibly not in English) saying what tool created the page
+     back_to = "Back to" (possibly not in English)
+     date = Date formatted according to some nationality's standard    
+    """
+    # assign to locals for convenient interpolation into the return string
+    homepage = configuration['homepage']
+    hometitle = configuration['hometitle']
+    fullname = configuration['fullname']
+    mailaddr = configuration['mailaddr']
+    toolgen = message['toolgen']
+    back_to = message['back_to']
+    date = message['date']
+    # get a dictionary: localvar -> value
+    maillink = ""
+    if mailaddr != "":
+        maillink = """<a href="mailto:%s"> &lt;%s&gt;</a>""" % (mailaddr, mailaddr)
+
+    local_strings = vars()
+
+    return """    </dl>
+    <hr />
+    <p>
+    %(toolgen)s
+    </p>
+    <hr />
+    <table summary="Footer" width="100%%" cellpadding="0"><tr>
+      <td>%(back_to)s <a target="_top" href="%(homepage)s">%(hometitle)s</a></td>
+      <td align="right">%(fullname)s</td>
+      </tr><tr>
+      <td colspan="2"><address>
+        %(date)s %(maillink)s
+      </address>
+      </td>
+      </tr>
+    </table>
+    </body>
+    </html>""" % local_strings
+    
+############################################################
+# Data Structure
+############################################################
+class PageInfo(UserDict):
+    """A lightweight class for holding information about a web page.
+    It is just a thin layer over a standard dictionary to ensure that 
+    each instance is initialized with all three variables and to set
+    the munged filename used in comparisons.  See the 
+    Library Reference for the UserDict base class."""
+    def __init__(self,filename,title,desc, keywords, isdir=0):
+        UserDict.__init__(self)
+        if isdir and filename[-len(os.sep):] != os.sep:
+            self.data['file'] = filename + os.sep
+        else:
+            self.data['file'] = filename
+        self.data['title'] = title
+        self.data['desc'] = desc
+        self.data['keywords'] = keywords
+        self._isdir = isdir
+        self._munged = self._adjustFilename(self.data['file'])
+            
+    def isdir(self):
+        return self._isdir
+
+    def _adjustFilename(self, filename):
+        """This method adjusts the given filename to support a simple
+        implementation of the __cmp__ method.  The cleverness was
+        lifted from the original sitemap script.  Sorting of files in
+        a directory before files in its subdirectories is achieved by
+        substituting the path separator with ASCII characters with a
+        high ordering.  The last separator is replaced with a slightly
+        smaller ASCII character so that directories sort before
+        subdirectories.  Index files are also forced to an early position
+        by modifying their filenames.  Multiple index files in one directory
+        are ordered according to their order in the indexfiles list."""
+        global configuration
+        last_sep_position = string.rfind(filename, os.sep)
+        munged = filename[:last_sep_position] + chr(254) + filename[last_sep_position+len(os.sep):]
+        munged = string.replace(munged, os.sep, chr(255))
+        if self.isdir():
+            munged = munged + ' 0'
+        else:
+            indexfiles = configuration['indexfiles']
+            for i in range(len(indexfiles)):
+                if filename[-len(indexfiles[i]):] == indexfiles[i]:
+                    munged = '%s %d' % (munged[:last_sep_position+1], i)
+                    break
+        return munged
+
+    def __cmp__(self, other):
+        """Sorts instances based on their corresponding filenames.
+        Files in the same directory are all sorted togehter, with the
+        directory instance first, the index files next, and then other
+        files following based on a lexical sort.  Files in subdirectories
+        of a given directory will sort before other files in other
+        directories at the same level as the given directory.  For example,
+        PageInfo instance for the following paths would sort in this order:
+        ./index.html
+        ./page.html
+        ./dir1/
+        ./dir1/index.html
+        ./dir1/page.html
+        ./dir1/dir2/
+        ./dir1/dir2/index.html
+        ./dir1/dir2/page.html
+        ./dir3/
+        ./dir3/index.html
+        ./dir3/page.html"""
+        return cmp(self._munged, other._munged)
+
+
+############################################################
+# Main Program
+############################################################
+if __name__ == '__main__':
+    import sys
+    import pwd
+    import urllib
+
+    # CONFIGURATION
+    home_dir = (os.environ.get('DOCUMENT_ROOT',None)
+                or os.environ.get('HOME',None)
+                or pwd.getpwuid(os.getuid())[5])
+    # The user can override the configuration filename on the commandline
+    # The first argument can be the full path to the config file or a directory
+    # where we should look for .sitemaprc.  We set the home_dir to the
+    # directory where we attempt to find the configuration file.
+    if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
+        config_file = sys.argv[1]
+        home_dir = os.path.dirname(sys.argv[1])
+    else:
+        if len(sys.argv) > 1 and  os.path.isdir(sys.argv[1]):
+            home_dir = sys.argv[1]
+        config_file = os.path.join(home_dir,'.sitemaprc')
+    # It's convenient to know that the home_dir ends in '/'
+    if home_dir[-len(os.sep)] != os.sep:
+        home_dir = home_dir + os.sep
+    # set up the URL prefix based on the doc_root
+    doc_root = os.environ.get('DOCUMENT_ROOT', home_dir)
+    prefix = home_dir
+    if prefix[:len(doc_root)] == doc_root:
+        prefix = prefix[len(doc_root):]
+    # check that the config file exists and overwrite configuration's values
+    # with those specified by the user
+    if os.path.exists(config_file):
+        configuration.update(parse_config_file(config_file))
+    else:
+        if config_file: # it's not equal to '' or None
+            sys.stderr.write('Warning: configuration file %s not found.\n' % config_file)
+            sys.stderr.write('\tContinuing, using the default configuration.\n')
+
+    # override prefix if it is given
+    if configuration.has_key('prefix'):
+        prefix = configuration['prefix']
+
+    # set text for displaying file and directory icons
+    if configuration['icondirs'] != '':
+        icondirs = '<img src="%s" alt="Dir" />' % configuration['icondirs']
+    else: icondirs = ''
+
+    if configuration['icontext'] != '':
+        icontext = '<img src="%s" alt="Text" />' % configuration['icontext']
+    else: icontext = ''
+
+    message = get_lang_msg(configuration['language'])
+
+    # MAIN TASK: walk the directory tree and index the pages
+    pages = []
+    os.path.walk( home_dir, extract_file_desc, (configuration,pages) )
+    pages.sort()
+
+    # GENERATE SITEMAP
+    if os.environ.has_key('REMOTE_ADDR'):
+        # It looks like we were called as a CGI script.  Output HTTP header.
+        print 'Content-Type: text/html\n\n'
+    print generate_header(configuration, message)
+    # Put a 'debug' key with a true value in your configuration file to get debug info.
+    if configuration.get('debug',0):
+        print generate_debug(home_dir, config_file, doc_root, prefix)
+    home_dir_len = len(home_dir)
+    for page in pages:
+        icon_output = icontext + "\n"
+        if page['title'] == configuration['dirtitle']:
+            icon_output = icondirs + "\n"
+            print '<dd><hr class="medium" /></dd>'
+        # Path, relative to the home_dir
+        relative_path = page['file'][home_dir_len:]
+        url = urllib.quote( os.path.join(prefix, relative_path))
+        if page['title'] != configuration['dirtitle'] or configuration['ignoredirs'] != 'y':
+            if configuration['webdevelop'] == "y" and page['title'] != configuration['dirtitle']:
+                print '<dt>%s<a href="%s">%s</a>: <strong>%s</strong> (%d)</dt>\n' \
+                      '<dd>\t%s (%d)<br/><strong>Keywords:</strong> %s</dd>\n' % \
+                      (icon_output, url, relative_path, page['title'], len(page['title']), page['desc'], len(page['desc']), page['keywords'])
+            else:
+                print '<dt>%s<a href="%s">%s</a>: <strong>%s</strong></dt>\n' \
+                      '<dd>\t%s</dd>\n' % \
+                      (icon_output, url, relative_path, page['title'], page['desc'])
+    print generate_footer(configuration,message)
+
+# End.

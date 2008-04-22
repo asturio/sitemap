@@ -1,0 +1,78 @@
+[sitemap]
+
+## Sample configuration file for sitemap.py.
+## Uncomment one or more of the following settings and add/change the
+## value for it to customize sitemap for your usage.  You'll need 
+## to copy this file to .sitemaprc in sitemap's start directory before 
+## sitemap will use it.
+
+## The text for the link to main home page from the site map page.
+#hometitle=Eric's Home Page
+
+## URL of main home page.  The site map page links to it.
+#homepage=http://www.tuxedo.org/~esr/
+
+## Text for the "title" tag of the site map page.
+#indextitle= Map of Eric's Home Web
+
+## Extra elements (such as "meta" tags) to add to the "head" of the site map page.
+#headinfo=
+
+## Prefix for URLs to indexed pages.  The prefix should be the site-relative 
+## URL to reach the directory indicated by the start directory.  For example, 
+## depending on the web server's configuration, the .sitemaprc in the 
+## directory corresponding to http://www.coolsite.com/~linus/Linux/Kernel 
+## would probably be Linux/Kernel if the script ran via CGI.  Try running the 
+## script with no setting and see what output is generated.  If necessary, 
+## enable the debug setting (below) to see what prefix is being used.  Adjust 
+## as necessary.
+#prefix=
+
+## The "body" tag for the site map page, for including attributes such as bgcolor.
+#body=bgcolor="#FFFFFF"
+
+## Directories are listed on the site map page with this text for a "title".
+#dirtitle=
+
+## Author/company name included on site map page
+#fullname=Directory
+
+## E-mail address for mailto link on site map page
+#mailaddr=esr@thyrsus.com
+
+## Language setting for sitemap's boiler plate text.  
+#language=english
+
+## An icon to use near directory entries on the site map page.  It must be 33 pixels wide.
+#icondirs=
+
+## An icon to use near file entries on the site map page.  
+## It must be 33 pixels wide.
+#icontext= 
+
+## A space-separated list of files to treat as index or main pages in a directory.
+## These files will be sorted to the top of all files in a directory.
+#indexfiles=index.html index.shtml index.htm default.htm index.phtml INDEX.HTM
+
+## A space-separated list of words used to skip files and directories that 
+## shouldn't be indexed.  Files and directories containing any word in this 
+## list will not be indexed by sitemap.
+#exclude=Test test oldstuff CVS RCS SCCS
+#
+## New in 2.7: If you want to process some no-HTML files (but with HTML
+## contents) you can # place them here.
+#processalso=admin.php register.php teilnehmer-page.php
+
+## New in 2.7: Set to Y if you want to get some statistics on the length if the
+## Meta-Information. It's a good option if you are making SEO. It will also display the KEYWORDS
+#webdevelop=n
+
+## New in 2.7: Set it to Y if directory entries should not be printed in the sitemap, only
+## files
+#ignoredirs=y
+
+
+## Set this to Y if you'd like sitemap to include in the output file 
+## information about what start directory, config file, and prefix it is using.
+#debug=
+

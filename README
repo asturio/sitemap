@@ -1,0 +1,15 @@
+			sitemap README
+
+sitemap makes an HTML site map page from the meta `description' tags in 
+HTML files below the current directory.  It's customizable via a dotfile
+that lets you specify what language to use, various icons, and what
+subdirectories (if any) to exclude.  See the manual page for details.  
+
+The file `sitemaprc' in the distribution is a sample configuration.
+
+Sitemap is available at <URL:http://www.tuxedo.net/~esr/software/>, or
+on Metalab (formerly Sunsite).
+
+						Eric S. Raymond
+						http://www.tuxedo.net/~esr/
+
