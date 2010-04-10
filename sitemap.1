@@ -125,6 +125,14 @@ If set to y, there won't be any Directory Entry in the output. This is perfect, 
 Debug=\fIy\fR
 Set this parameter to view the computed configuration file name, start directory, document root, and prefix in the generated site map page. You'll need to view the source of the generated HTML file because these values will be listed within and HTML comment. Search for the word Debugging in the generated HTML page.
 
+.TP
+preemble=\fI<div>\fR
+Sets the element which will be placed just after <body>. This is an optional parameter for better controll of the layout.
+
+.TP
+postemble=\fI</div>\fR
+Sets the element which will be placed just before </body>. This is an optional parameter for better controll of the layout.
+
 .SH "USE UNDER CGI"
 
 .PP
@@ -147,3 +155,5 @@ Immo Huneke <HunekeI@Logica.Com>.
 .PP
 Tom Bryan <tbryan@python.net>.
 
+.PP
+Claudio Clemens <asturio@gmx.net>.

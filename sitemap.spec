@@ -1,5 +1,5 @@
 Name: sitemap
-Version: 2.7
+Version: 2.7.2
 # Don't forget tu up
 Release: 1
 Summary: makes a site map page for you from description metadata
@@ -75,7 +75,4 @@ cp sitemap.1 "$RPM_BUILD_ROOT"%{_mandir}/man1/
 #     Documentation masters moved from POD to DocBook.
 # 2.2 Minor corrections to Czech localization by Matej Cepl.
 # 2.3 Make attribute recognition a little smarter.
-
-
-
 

@@ -71,6 +71,12 @@
 ## files
 #ignoredirs=y
 
+## New in 2.7.2: Will be the first element after <body>
+#preemble=<div class=class>
+
+## New in 2.7.2: Will be the last element after </body>
+#postemble=</div>
+
 
 ## Set this to Y if you'd like sitemap to include in the output file 
 ## information about what start directory, config file, and prefix it is using.
